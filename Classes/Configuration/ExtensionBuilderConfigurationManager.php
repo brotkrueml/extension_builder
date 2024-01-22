@@ -163,6 +163,23 @@ class ExtensionBuilderConfigurationManager implements SingletonInterface
         $extensionConfigurationJson = self::getExtensionBuilderJson($extensionKey, $storagePath);
         if ($extensionConfigurationJson) {
             $extensionConfigurationJson = $this->fixExtensionBuilderJSON($extensionConfigurationJson);
+			if(empty($extensionConfigurationJson['storagePath'])){
+				$extensionConfigurationJson['storagePath'] = $storagePath;
+			}
+			if(isset($extensionConfigurationJson['properties']['plugins'])){
+				foreach($extensionConfigurationJson['properties']['plugins'] as $key => &$plug){
+					if(empty($plug['description'])){
+						$plug['description'] = "";
+					}
+				}
+			}
+			if(isset($extensionConfigurationJson['properties']['backendModules'])){
+				foreach($extensionConfigurationJson['properties']['backendModules'] as $key => &$plug){
+					if(empty($plug['description'])){
+						$plug['description'] = "";
+					}
+				}
+			}
             $extensionConfigurationJson['properties']['originalExtensionKey'] = $extensionKey;
             $extensionConfigurationJson['properties']['originalVendorName'] = $extensionConfigurationJson['properties']['vendorName'];
             return $extensionConfigurationJson;
@@ -257,9 +274,23 @@ class ExtensionBuilderConfigurationManager implements SingletonInterface
      */
     public function fixExtensionBuilderJSON(array $extensionConfigurationJson): array
     {
-        $extensionConfigurationJson['modules'] = $this->resetOutboundedPositions($extensionConfigurationJson['modules']);
+        // DebuggerUtility::var_dump($extensionConfigurationJson);
+
+//		if(isset($extensionConfigurationJson['modules'])){
+			if(!isset($extensionConfigurationJson['nodes'])){
+                $extensionConfigurationJson['nodes'] = $this->createNodes($extensionConfigurationJson);
+            }
+			if(!isset($extensionConfigurationJson['wires'])){
+				$extensionConfigurationJson['wires'] = [];
+			}
+			if(!isset($extensionConfigurationJson['edges'])){
+				$extensionConfigurationJson['edges'] = [];
+			}
+//		}
         $extensionConfigurationJson['modules'] = $this->mapAdvancedMode($extensionConfigurationJson['modules']);
-        return $this->reArrangeRelations($extensionConfigurationJson);
+
+        // return $this->reArrangeRelations($extensionConfigurationJson);
+        return $extensionConfigurationJson;
     }
 
     /**
@@ -289,8 +320,10 @@ class ExtensionBuilderConfigurationManager implements SingletonInterface
                     if (empty($module['value']['relationGroup']['relations'][$i]['advancedSettings'])) {
                         $module['value']['relationGroup']['relations'][$i]['advancedSettings'] = [];
                         foreach ($fieldsToMap as $fieldToMap) {
-                            $module['value']['relationGroup']['relations'][$i]['advancedSettings'][$fieldToMap] =
-                                $module['value']['relationGroup']['relations'][$i][$fieldToMap];
+							if(!empty($module['value']['relationGroup']['relations'][$i][$fieldToMap])){
+								$module['value']['relationGroup']['relations'][$i]['advancedSettings'][$fieldToMap] =
+									$module['value']['relationGroup']['relations'][$i][$fieldToMap];
+							}
                         }
 
                         $module['value']['relationGroup']['relations'][$i]['advancedSettings']['propertyIsExcludeField'] =
@@ -313,6 +346,178 @@ class ExtensionBuilderConfigurationManager implements SingletonInterface
         }
         return $jsonConfig;
     }
+
+	protected function createNodes(array $jsonConfig): ?array
+    {
+        // TODO: this is executed right after clicking on "load extension". This is not correct. This should only be executed after clicking on an extension in the list.
+		$nodes = [];
+		if(!isset($jsonConfig['modules'])){
+			return $nodes;
+		}
+		$tmp['new'] = 'name';
+		$tmp['old'] = 'propertyName';
+		$tmp['default'] = '';
+		$nodesArr[] = $tmp;
+		$tmp['new'] = 'type';
+		$tmp['old'] = 'propertyType';
+		$tmp['default'] = 'String';
+		$nodesArr[] = $tmp;
+		$tmp['new'] = 'description';
+		$tmp['old'] = 'propertyDescription';
+		$tmp['default'] = '';
+		$nodesArr[] = $tmp;
+		$tmp['new'] = 'isRequired';
+		$tmp['old'] = 'propertyIsRequired';
+		$tmp['default'] = false;
+		$nodesArr[] = $tmp;
+		$tmp['new'] = 'isNullable';
+		$tmp['old'] = 'propertyIsNullable';
+		$tmp['default'] = false;
+		$nodesArr[] = $tmp;
+		$tmp['new'] = 'isExcludeField';
+		$tmp['old'] = 'propertyIsExcludeField';
+		$tmp['default'] = false;
+		$nodesArr[] = $tmp;
+		$tmp['new'] = 'isl10nModeExlude';
+		$tmp['old'] = 'propertyIsl10nModeExlude';
+		$tmp['default'] = false;
+		$nodesArr[] = $tmp;
+
+		$tmp['new'] = 'actionIndex';
+		$tmp['old'] = 'index';
+		$tmp['default'] = false;
+		$actArr[] = $tmp;
+		$tmp['new'] = 'actionList';
+		$tmp['old'] = 'list';
+		$tmp['default'] = false;
+		$actArr[] = $tmp;
+		$tmp['new'] = 'actionShow';
+		$tmp['old'] = 'show';
+		$tmp['default'] = false;
+		$actArr[] = $tmp;
+		$tmp['new'] = 'actionNewCreate';
+		$tmp['old'] = 'new_create';
+		$tmp['default'] = false;
+		$actArr[] = $tmp;
+		$tmp['new'] = 'actionEditUpdate';
+		$tmp['old'] = 'edit_update';
+		$tmp['default'] = false;
+		$actArr[] = $tmp;
+		$tmp['new'] = 'actionDelete';
+		$tmp['old'] = 'delete';
+		$tmp['default'] = false;
+		$actArr[] = $tmp;
+
+		$tmp['new'] = 'objectType';
+		$tmp['old'] = 'type';
+		$tmp['default'] = '';
+		$objArr[] = $tmp;
+		$tmp['new'] = 'isAggregateRoot';
+		$tmp['old'] = 'aggregateRoot';
+		$tmp['default'] = false;
+		$objArr[] = $tmp;
+		$tmp['new'] = 'enableSorting';
+		$tmp['old'] = 'sorting';
+		$tmp['default'] = false;
+		$objArr[] = $tmp;
+		$tmp['new'] = 'addDeletedField';
+		$tmp['old'] = 'addDeletedField';
+		$tmp['default'] = false;
+		$objArr[] = $tmp;
+		$tmp['new'] = 'addHiddenField';
+		$tmp['old'] = 'addHiddendField';
+		$tmp['default'] = false;
+		$objArr[] = $tmp;
+		$tmp['new'] = 'addStarttimeEndtimeFields';
+		$tmp['old'] = 'addStarttimeEndtimeFields';
+		$tmp['default'] = false;
+		$objArr[] = $tmp;
+		$tmp['new'] = 'enableCategorization';
+		$tmp['old'] = 'categorizable';
+		$tmp['default'] = false;
+		$objArr[] = $tmp;
+		$tmp['new'] = 'description';
+		$tmp['old'] = 'description';
+		$tmp['default'] = '';
+		$objArr[] = $tmp;
+		$tmp['new'] = 'mapToExistingTable';
+		$tmp['old'] = 'mapToTable';
+		$tmp['default'] = '';
+		$objArr[] = $tmp;
+		$tmp['new'] = 'extendExistingModelClass';
+		$tmp['old'] = 'existingModelClass';
+		$tmp['default'] = '';
+		$objArr[] = $tmp;
+		foreach($jsonConfig['modules'] as $nMod => $module){
+			$node = [];
+			$node['id'] = 'dndnode_' . $nMod;
+			$node['type'] = 'customModel';
+			$node['position']['x'] = $module['config']['position'][0];
+			$node['position']['y'] = $module['config']['position'][1];
+			$node['dragHandle'] = '.drag-handle';
+			$node['draggable'] = true;
+			$node['width'] = 300;
+			$node['height'] = 1000;
+	//*** data section ***
+			$node['data']['label'] = $module['value']['name'];
+			foreach($objArr as $item){
+				if(isset($module['value']['objectsettings'])){
+					$bFind = false;
+					foreach($module['value']['objectsettings'] as $key => $obj){
+						if(isset($obj[$item['old']])){
+							$node['data'][$item['new']] = $obj[$item['old']];
+						}else{
+							$node['data'][$item['new']] = $item['default'];
+						}
+					}
+				}
+			}
+	//*** create actions (data['actions'] ***
+			foreach($actArr as $item){
+				if(isset($module['value']['actionGroup'])){
+					$bFind = false;
+					foreach($module['value']['actionGroup'] as $key => $act){
+						if(is_array($act)){
+							continue;
+						}
+						if(strpos($key, $item['old']) !== false){
+							$node['data']['actions'][$item['new']] = $act;
+							$bFind = true;
+							break;
+						}
+					}
+					if(!$bFind){
+						$node['data']['actions'][$item['new']] = $item['default'];
+					}
+				}
+			}
+	//*** create customActions (data['customActions'] ***
+				if(isset($module['value']['actionGroup']['customAction'])){
+					$node['data']['customActions'] = $module['value']['actionGroup']['customAction'];
+				}else{
+					$node['data']['customActions'] = [];
+				}
+	//*** create properties (data['properties'] ***
+			foreach($module['value']['propertyGroup']['properties'] as $key => $prop){
+				foreach($nodesArr as $item){
+
+					if(isset($prop[$item['old']])){
+						$node['data']['properties'][$key][$item['new']] = $prop[$item['old']];
+					}else{
+						$node['data']['properties'][$key][$item['new']] = $item['default'];
+					}
+				}
+			}
+	//*** create relations (data['relations'] ***
+			if(isset($module['value']['relationsGroup']['relations'])){
+				$node['data']['relations'] = $module['value']['relationsGroup']['relations'];
+			}else{
+				$node['data']['relations'] = [];
+			}
+			$nodes[] = $node;
+		}
+		return $nodes;
+	}
 
     /**
      * Prefixes class names with a backslash to ensure that always fully qualified
@@ -343,25 +548,6 @@ class ExtensionBuilderConfigurationManager implements SingletonInterface
     public function isConfirmed(string $identifier): bool
     {
         return isset($this->inputData['params'][$identifier]) && $this->inputData['params'][$identifier] == 1;
-    }
-
-    /**
-     * Just a temporary workaround until the new UI is available.
-     *
-     * @param array $jsonConfig
-     * @return array
-     */
-    protected function resetOutboundedPositions(array $jsonConfig): array
-    {
-        foreach ($jsonConfig as &$module) {
-            if ($module['config']['position'][0] < 0) {
-                $module['config']['position'][0] = 10;
-            }
-            if ($module['config']['position'][1] < 0) {
-                $module['config']['position'][1] = 10;
-            }
-        }
-        return $jsonConfig;
     }
 
     /**
